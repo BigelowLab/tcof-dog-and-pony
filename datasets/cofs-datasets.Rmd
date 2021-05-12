@@ -1,0 +1,89 @@
+---
+title: "Center for Ocean Forecasting"
+output:
+  html_document:
+    df_print: paged
+---
+Center for Ocean Forecasting
+
+```{r setup, message = FALSE, echo = FALSE}
+knitr::opts_chunk$set(cache=TRUE)
+library(dplyr)
+library(obpg2tools)
+library(stars)
+library(ggplot2)
+library(sf)
+```
+
+
+
+## Data Sources
+
+**Observation Sources**
+
+ - Satellites (OBPG, MUR, Copernicus, ...)
+ - Buoys
+ - Weather stations
+ - Interpolated historical weather (DAYMET)
+ - River flow
+ - Species Observations
+
+**Model Sources**
+
+ - NOAA/NWS weather models
+ - RTOFS ocean models
+ - NECOFS ocean models
+
+
+## Example Satellite Data
+```{r read_db}
+data_path = obpg_path("nwa", "AQUA_MODIS", "L3m")
+db = read_database(data_path)
+db
+```
+
+## Pull SST December 2020
+```{r pull_sst}
+db_sst = db %>%
+  filter(param == "sst" &
+         per == "8DR" &
+         between(date, as.Date("2020-12-01"), as.Date("2020-12-31")))
+db_sst
+```
+
+## compose SST filenames
+```{r compose_files}
+sst_files = compose_obpg(db_sst, data_path)
+head(sst_files, n = 6)
+```
+
+## read SST files
+
+```{r read_files}
+sst = read_stars(sst_files, along = 'band') %>%
+  st_set_dimensions(which = 'band', values = db_sst$date)
+sst
+```
+
+## plot SST rasters
+
+```{r show_one, echo = FALSE, message = FALSE}
+ggplot() +
+  geom_stars(data = sst[,,,1:3]) +
+  coord_equal() +
+  facet_wrap(~band) +
+  guides(fill=guide_legend(title="SST")) +
+  theme_void() +
+  scale_x_discrete(expand=c(0,0)) +
+  scale_y_discrete(expand=c(0,0))
+```
+## Drill out a point
+
+```{r point}
+point <- dplyr::tibble(id = "1", lon = -68.70557, lat = 43.04157) %>%
+  st_as_sf(coords = c("lon", "lat"), crs = st_crs(sst))
+
+p_values = st_extract(sst, point) %>% st_as_sf()
+```
+
+
