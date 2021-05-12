@@ -8,6 +8,7 @@ Center for Ocean Forecasting
 
 ```{r setup, message = FALSE, echo = FALSE}
 knitr::opts_chunk$set(cache=TRUE)
+library(tidyr)
 library(dplyr)
 library(obpg2tools)
 library(stars)
@@ -65,25 +66,51 @@ sst = read_stars(sst_files, along = 'band') %>%
 sst
 ```
 
-## plot SST rasters
+## plot SST rasters (just first 4 days)
 
-```{r show_one, echo = FALSE, message = FALSE}
-ggplot() +
-  geom_stars(data = sst[,,,1:3]) +
-  coord_equal() +
-  facet_wrap(~band) +
-  guides(fill=guide_legend(title="SST")) +
-  theme_void() +
-  scale_x_discrete(expand=c(0,0)) +
-  scale_y_discrete(expand=c(0,0))
-```
-## Drill out a point
-
-```{r point}
+```{r drill_point, echo = FALSE}
 point <- dplyr::tibble(id = "1", lon = -68.70557, lat = 43.04157) %>%
   st_as_sf(coords = c("lon", "lat"), crs = st_crs(sst))
 
-p_values = st_extract(sst, point) %>% st_as_sf()
+p_values = st_extract(sst, point) %>% 
+  st_as_sf() %>% 
+  st_drop_geometry() %>%
+  as_tibble() %>% 
+  pivot_longer(everything(), names_to = "date", values_to = "sst") %>%
+  mutate(date = as.Date(date))
+```
+
+And show a point in Gulf of Maine we'll extract.
+
+```{r show_one, echo = FALSE, message = FALSE}
+plot(sst[,,,1:4], 
+     hook = function(){plot(point, 
+                            add = TRUE, 
+                            col = "orange", 
+                            cex = 2, 
+                            pch = 16)})
+
+```
+
+## Drill out a point in the Gulf of Maine
+
+```{r plot_point, echo = FALSE, message = FALSE, warning = FALSE}
+ggplot(data = p_values, aes(date, sst)) + 
+  geom_point() + 
+  geom_line(col = "blue") + 
+  labs(x = "Date", y = "SST", title = "December, 2020") +
+  ylim(c(5, 15))
+```
+
+What is that break about? And why does the 8-day rolling mean temperature drop like that?
+
+```{r all_plot, echo = FALSE, warning = FALSE}
+plot(sst, key.pos = NULL,
+     hook = function(){plot(point, 
+                            add = TRUE, 
+                            col = "orange", 
+                            cex = 3, 
+                            pch = 1)})
 ```
 
 
