@@ -1,4 +1,4 @@
-# Center For Ocean Forecasting Presentation Vignettes
+# Tandy Center For Ocean Forecasting Presentation Vignettes
 
 A series of coding vignettes from the Center for Ocean Forecasting
 
